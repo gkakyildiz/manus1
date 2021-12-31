@@ -1,0 +1,454 @@
+---
+title: "Carlos Makale"
+author: "Gürçay Kıvanç AKYILDIZ"
+date: "2/15/2021"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+## Carlos Makale
+```{r echo = FALSE, warning=TRUE, message=FALSE, error=TRUE}
+library(vegan)
+library(MASS)
+library(xlsx)
+library(corrplot)
+library(RColorBrewer)
+## ilgili map kütüphaneleri
+library(tidyverse)
+library(ggpubr)
+library(rstatix)
+library(data.table)
+library(sp)
+library(rgdal)
+library(ggplot2)
+library(raster)
+```
+
+```{r echo= FALSE, warning=TRUE, message=FALSE, error=TRUE}
+spec <- read.csv("/media/tanthana/802E-18CD/Academics/Recep Bakır PhD Thesis/Manus/spec4.csv")
+env <- read.csv("/media/tanthana/802E-18CD/Academics/Recep Bakır PhD Thesis/Manus/env4.csv")
+#ncol(spec)
+#nrow(spec)
+#ncol(env)
+#nrow(env)
+#spec[,1]==env[,1]
+#sitenames <- spec[,1]
+#sitenames
+```
+
+Veriseti bilgileri.
+
+Veri setinde yer alan toplam takson sayısı: **```r ncol(spec)```**
+
+Veri setinde yer alan taksonlar:
+```{r echo= FALSE, warning=TRUE, message=FALSE, error=TRUE}
+colnames(spec[,3:24])
+```
+
+Veri setinde kullanılan toplam parametre (çevresel + abiyotik) sayısı: **```r ncol(env)-2```**
+
+Veri setinde yer alan parametreler:
+```{r echo= FALSE, warning=TRUE, message=FALSE, error=TRUE}
+colnames(env[,3:31])
+```
+
+Veri setinde yer alan istasyon sayısı: **```r nrow(spec)```**
+
+Veri setinde yer alan istasyonlar:
+```{r echo= FALSE, warning=TRUE, message=FALSE, error=TRUE}
+spec[,1]
+```
+
+**True** verisi çevresel ve tür veri setindeki istasyon adlarının aynı sırada örtüşüp örtüşmediği hakkında sağlama sonucunu vermektedir. 
+
+```{r echo= FALSE, warning=TRUE, message=FALSE, error=TRUE}
+spec[,1]==env[,1]
+```
+
+Veri setinde yer alan istasyonlar ve atanmış kodları:
+```{r echo= FALSE, warning=TRUE, message=FALSE, error=TRUE}
+data.frame(spec[,1:2])
+```
+
+## Göllerde tespit edilen *Chironomus* cinsine ait türler ve sayıları
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+abdnc <- colSums(spec[,-c(1,2)])
+data.frame(abdnc)
+```
+
+**Yarışlı Gölü'nde** Chironomus cinsine ait bir tür tespit edilememiştir.
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+bireySayisi <- rowSums(spec[,-c(1,2)])
+data.frame(spec[,1:2],bireySayisi)
+```
+
+### Shannon-Wiener Çeşitlilik İndeksi (H) ve Pielou’s Evenness Eşitlik İndeksi (J)
+
+Tek tür tespit edilen istasyonlarda çeşitlilik ve eşitlilik indeksleri hesaplanamamaktadır. *Yarışlı Gölü'nde Chironomus cinsine ait bir tür tespit edilememiştir.*
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+spec.div <- spec[,-c(1,2)]
+H <- diversity(spec.div)
+#sort(H)
+J <- H/log(specnumber(spec.div))
+#sort(J)
+```
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+lake <- spec[,1]
+#write.xlsx(shannonTable, file = "/media/tanthana/802E-18CD/Academics/Recep Bakır PhD Thesis/Manus/shannonTable.xlsx", sheetName = "Sheet1")
+diversityTable <- data.frame(lake,H,J)
+diversityTable
+#write.xlsx(evennessTable, file = "/media/tanthana/802E-18CD/Academics/Recep Bakır PhD Thesis/Manus/evennessTable.xlsx", sheetName = "Sheet1")
+```
+
+**Shannon-Wiener Çeşitlilik İndeksi (H)**'ne göre istasyonların sıralaması aşağıda verilmiştir. *Yarışlı Gölü'nde Chironomus cinsine ait bir tür tespit edilememiştir.*
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+diversityTable[order(diversityTable$H),]
+```
+
+**Pielou’s Evenness Eşitlik İndeksi (J)**'ne göre istasyonların sıralaması aşağıda verilmiştir. *Yarışlı Gölü'nde Chironomus cinsine ait bir tür tespit edilememiştir.*
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+diversityTable[order(diversityTable$J),]
+```
+
+## Çevresel Veriler ve Abiyotik Faktörler
+### Yüzey Alanı (Surface Area) (km^2^)
+Göllere ait yüzey alanı verileri sıralamalı şekilde aşağıda verilmiştir. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+surfaceareaTable <- env[,c(1,3)]
+surfaceareaTable[order(surfaceareaTable$SurfaceArea),]
+```
+
+### Göl Şekli (Shape)
+Göl şekilleri Reeves (1968)'e göre belirlenmiş olup beş farklı (subcircular, subrectangular, elliptical, irregular, triangular) şekilde tanımlanmış faktör değişkenlerdir.
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+shapeTable <- env[,c(1,6)]
+shapeTable[order(shapeTable$Shape),]
+```
+
+### Feç Oranı (Fetch Ratio)
+Feç oranları, göllerdeki hakim rüzgar yönü dikkate alınarak göl eninin göl boyuna göre oranlanmasıyla hesaplanır. Feç oranı atmosfer ve su yüzeyi etkileşiminin kantitatif bir göstrgesidir (Vercauteren, 2011). 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+fetchTable <- env[,c(1,7)]
+fetchTable[order(fetchTable$FetchRatio),]
+```
+
+### Derinlik (Depth) (m)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+depthTable <- env[,c(1,8)]
+depthTable[order(depthTable$Depth),]
+```
+
+### Yükseklik (Altitude) (m)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+altitudeTable <- env[,c(1,9)]
+altitudeTable[order(altitudeTable$Alt),]
+```
+
+### Tuzluluk (Salinity) (‰)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+salinityTable <- env[,c(1,10)]
+salinityTable[order(salinityTable$Sal),]
+```
+
+### Su Sıcaklığı (Temperature) (°C)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+tempTable <- env[,c(1,11)]
+tempTable[order(tempTable$Temp),]
+```
+
+### Çözünmüş Oksijen (dO~2~) (mg/l)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+dO2Table <- env[,c(1,12)]
+dO2Table[order(dO2Table$dO2),]
+```
+
+### Oksijen Doygunluğu (sO~2~) (%)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+sO2Table <- env[,c(1,15)]
+sO2Table[order(sO2Table$sO2),]
+```
+
+### İletkenlik (Conductivityt) (µS/cm)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+condTable <- env[,c(1,13)]
+condTable[order(condTable$Cond),]
+```
+
+### pH
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+phTable <- env[,c(1,14)]
+phTable[order(phTable$pH),]
+```
+
+### Toplam Çözünmüş Katı Madde Miktarı (TDS) (mg/l)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+tdsTable <- env[,c(1,16)]
+tdsTable[order(tdsTable$TDS),]
+```
+
+### Oksidasyon Redüksiyon Potansiyeli (ORP) (mV)
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+orpTable <- env[,c(1,17)]
+orpTable[order(orpTable$ORP),]
+```
+
+### Ortofosfat Miktarı (PO~4~) (mg/l)
+Sarıot Gölü'nde inorganik madde analizi yapılamamıştır. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+po4Table <- env[,c(1,18)]
+po4Table[order(po4Table$PO4),]
+```
+
+### Ferrik İyon Miktarı (Fe^+3^) (mg/l)
+Sarıot Gölü'nde inorganik madde analizi yapılamamıştır. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+feTable <- env[,c(1,19)]
+feTable[order(feTable$Fe),]
+```
+
+### Nitrat Azotu Miktarı (NO~3~-N) (mg/l)
+Sarıot Gölü'nde inorganik madde analizi yapılamamıştır. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+no3Table <- env[,c(1,20)]
+no3Table[order(no3Table$NO3.N),]
+```
+
+### Nitrit Azotu Miktarı (NO~2~-N) (mg/l)
+Sarıot Gölü'nde inorganik madde analizi yapılamamıştır. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+no2Table <- env[,c(1,21)]
+no2Table[order(no2Table$NO2.N),]
+```
+
+### Amonyum Azotu Miktarı (NH~4~-N) (mg/l)
+Sarıot Gölü'nde inorganik madde analizi yapılamamıştır. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+nh4Table <- env[,c(1,24)]
+nh4Table[order(nh4Table$NH4.N),]
+```
+
+### Su Sertliği - Magnezyum Miktarı (Mg) (mg/l)
+Sarıot Gölü'nde inorganik madde analizi yapılamamıştır. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+mgTable <- env[,c(1,22)]
+mgTable[order(mgTable$Mg),]
+```
+
+### Su Sertliği - Kalsiyum Miktarı (Ca) (mg/l)
+Sarıot Gölü'nde inorganik madde analizi yapılamamıştır. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+caTable <- env[,c(1,23)]
+caTable[order(caTable$Ca),]
+```
+
+### Klorür Miktarı (Cl) (mg/l)
+Sarıot Gölü'nde inorganik madde analizi yapılamamıştır. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+clTable <- env[,c(1,25)]
+clTable[order(clTable$Cl),]
+```
+
+### Göllerin tip kriterleri
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+typoTable <- env[,c(1,26,27,28,29)]
+typoTable[order(typoTable$Alt.1,typoTable$Depth.1,typoTable$Area,typoTable$Geo),]
+```
+
+## Parametreler Arasında Korelasyon İlişkisi
+Göl sayısının 19 olması ve parametrelerin normal dağılım göstermemeleri sebebiyle korelasyon katsayısının hesaplanmasında *kendall* yöntemi kullanılmıştır. Sarıot Gölü bu analize dahil edilmemiştir. 
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+env.cor <- env[,c(3,7:25)]
+env.cor$H <- H
+#env.cor$J <- J
+corr <- cor(env.cor, method = c("kendall"))
+corr
+```
+Korelasyon ilişkisinin görsel ifadesi aşağıda verilmiştir. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+corrplot(corr, order = "hclust", tl.cex = 0.7, tl.col = "black", type = "upper", col = gray.colors(100))
+```
+
+### Korelasyon Testi
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+colnames(env.cor)
+```
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+library("PerformanceAnalytics")
+chart.Correlation(env.cor, histogram=TRUE, pch=19)
+```
+
+<!--
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+params <- c("SurfaceArea","FetchRatio","Depth","Alt","Sal","Temp","dO2","Cond","pH","sO2","TDS","ORP","PO4","Fe","NO3.N","NO2.N","Mg","Ca","NH4.N","Cl")
+count1 <- 1
+count2 <- 1
+totalCount <- 0
+for(i in 1:361){
+  param1 <- params[count1]
+  param2 <- params[count2]
+  ct <- cor.test(env.cor[,param1],env.cor[,param2], method = "kendall")
+  if(ct$p.value < 0.05){
+    print(paste(params[count1],"vs.",params[count2]))
+    print(ct)
+    totalCount <- totalCount+1
+    plot(env.cor[,param1],env.cor[,param2], xlab = params[count1], ylab = params[count2] )
+  }
+  if(count2 < 20){
+  count2 <- count2+1
+  }
+  else{
+    count1 <- count1+1
+    count2 <- 1
+  }
+}
+totalCount-19
+```
+-->
+
+Parametreler arasındaki ilişkide korelasyon katsayısı (r) değeri dikkate alınmıştır. Buna göre Yükseklik ve TDS arasında kuvvetli negatif korelasyon (-0.6055), Yükseklik ve Klorür arasında kuvvetli negatif korelasyon (-0.696), Tuzluluk ve TDS arasında kuvvetli pozitif korelasyon (0.705), İletkenlik ve TDS arasında kuvvetli pozitif korelasyon (0.608), pH ve ORP arasında kuvvetli negatif korelasyon (-0.950) tespit edilmiştir. 
+
+```{r echo = FALSE, warning=FALSE, message=FALSE, error=TRUE}
+params <- c("SurfaceArea","FetchRatio","Depth","Alt","Sal","Temp","dO2","Cond","pH","sO2","TDS","ORP","PO4","Fe","NO3.N","NO2.N","Mg","Ca","NH4.N","Cl","H")
+count1 <- 1
+count2 <- 1
+totalCount <- 0
+for(i in 1:361){
+  param1 <- params[count1]
+  param2 <- params[count2]
+  ct <- cor.test(env.cor[,param1],env.cor[,param2], method = "kendall")
+  if(ct$estimate > 0.60 || ct$estimate < -0.60){
+    print(paste(params[count1],"vs.",params[count2]))
+    print(ct)
+    totalCount <- totalCount+1
+    plot(env.cor[,param1],env.cor[,param2], xlab = params[count1], ylab = params[count2] )
+  }
+  if(count2 < 20){
+  count2 <- count2+1
+  }
+  else{
+    count1 <- count1+1
+    count2 <- 1
+  }
+}
+totalCount-19
+```
+
+## Non-Metrik Multidimensional Scaling
+Ordinasyon analizine Sarıot Gölü dahil edilmemiştir. Sarıot gölünde tek bir tür tespit edilmiş olması ve o türün 
+```{r echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+ord.spec <- spec[-c(2,7),-c(1,2)]
+rownames(ord.spec) <- spec[-c(2,7),1]
+vare.dis <- vegdist(ord.spec)
+vare.mds0 <- isoMDS(vare.dis)
+stressplot(vare.mds0, vare.dis)
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+ordiplot(vare.mds0, type = "t")
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+vare.mds <- metaMDS(ord.spec, trace = FALSE)
+vare.mds
+plot(vare.mds, type = "t")
+```
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+coord.env <- env
+coordinates(coord.env) <- c("Long","Lat")
+TUR <- readRDS("/media/tanthana/802E-18CD/Academics/Recep Bakır PhD Thesis/Manus/gadm36_TUR_0_sp.rds")
+plot(TUR)
+points(coord.env, pch = 20, col = "orange")
+with(env, text(env$Lat-0.2~env$Long, labels=as.character(env[,1]), col = "darkblue", cex = 0.6))
+```
+
+## Türlerin Dağılımı
+<!--
+```{r echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+spec.names <- c("C.tentans","C.annularius","C.aprilinus","C.balatonicus","C.bernensis","C.cingulatus","C.crassimanus","C.dorsalis","C.luridus","C.melanescens","C.muratensis","C.nippodorsalis","C.nuditarsis","C.plumosus","C.pseudothummi","C.rihikimiensis","C.riparius","C.salinarius","C.sp.1","C.sp.2","C.sp.3","C.uliginosus")
+spec.diverse <- spec
+lat <- env$Lat
+long <- env$Long
+spec.diverse$Lat <- lat
+spec.diverse$Long <- long
+species <- subset(spec.diverse, get(spec.names[1]) > 0, select = c("Site",spec.names[1],"Lat","Long"))
+```
+
+*C. tentans* türü tespit edilen göller: ```r species[,1]```.
+
+```{r echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+species
+coord.species <- species
+coordinates(coord.species) <- c("Long","Lat")
+plot(TUR)
+points(coord.species, pch = 20, col = "orange")
+with(env, text(species$Lat-0.2~species$Long, labels=as.character(species[,1]), col = "darkblue", cex = 0.6))
+```
+-->
+
+<!--
+```{r  echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+spec.names <- c("C.tentans","C.annularius","C.aprilinus","C.balatonicus","C.bernensis","C.cingulatus","C.crassimanus","C.dorsalis","C.luridus","C.melanescens","C.muratensis","C.nippodorsalis","C.nuditarsis","C.plumosus","C.pseudothummi","C.rihikimiensis","C.riparius","C.salinarius","C.sp.1","C.sp.2","C.sp.3","C.uliginosus")
+spec.diverse <- spec
+lat <- env$Lat
+long <- env$Long
+spec.diverse$Lat <- lat
+spec.diverse$Long <- long
+
+for(i in 1:length(spec.names)){
+  species <- subset(spec.diverse, get(spec.names[i]) > 0, select = c("Site",spec.names[i],"Lat","Long"))
+  print(paste(spec.names[i], "türü tespit edilen göller:"))
+  #print(species[,1])
+  coord.species <- species
+  coordinates(coord.species) <- c("Long","Lat")
+  plot(TUR)
+  points(coord.species, pch = 20, col = "orange")
+  with(env, text(species$Lat-0.2~species$Long, labels=as.character(species[,1]), col = "darkblue", cex = 0.6))
+}
+```
+-->
+
+```{r  echo=FALSE, warning=FALSE, message=FALSE, error=TRUE}
+spec.names <- c("C.tentans","C.annularius","C.aprilinus","C.balatonicus","C.bernensis","C.cingulatus","C.crassimanus","C.dorsalis","C.luridus","C.melanescens","C.muratensis","C.nippodorsalis","C.nuditarsis","C.plumosus","C.pseudothummi","C.rihikimiensis","C.riparius","C.salinarius","C.sp.1","C.sp.2","C.sp.3","C.uliginosus")
+spec.diverse <- spec
+lat <- env$Lat
+long <- env$Long
+spec.diverse$Lat <- lat
+spec.diverse$Long <- long
+
+for(i in 1:length(spec.names)){
+  species <- subset(spec.diverse, get(spec.names[i]) > 0, select = c("Site",spec.names[i],"Lat","Long"))
+  sites <- species[,1]
+  
+ # environ <- subset(env, Lake == sites, select = #c("Lake","SurfaceArea","Shape","FetchRatio","Depth","Alt","Sal","Temp","dO2","Cond","pH","sO2","TDS","ORP","PO4","Fe","NO3.N","NO2.N","Mg","Ca","NH4.N","#Cl","Alt.1","Depth.1","Area","Geo"))
+## 
+  
+  environ <- subset(env, Lake %in% sites, select = c("Lake","Depth","Alt","Sal","Temp","dO2","Cond","pH","sO2","TDS","ORP","PO4","Fe","NO3.N","NO2.N","Mg","Ca","NH4.N","Cl","Alt.1","Depth.1","Area","Geo"))
+  write.xlsx(environ, file = "/media/tanthana/802E-18CD/Academics/Recep Bakır PhD Thesis/Manus/specEnvTable.xlsx", sheetName = spec.names[i], append = TRUE)
+  print(t(environ), quote = FALSE)
+  print(paste(spec.names[i], "türü tespit edilen göller:"))
+  coord.species <- species
+  coordinates(coord.species) <- c("Long","Lat")
+  plot(TUR)
+  points(coord.species, pch = 20, col = "orange")
+  with(env, text(species$Lat-0.2~species$Long, labels=as.character(species[,1]), col = "darkblue", cex = 0.6))
+}
+```
+
+
+
+
